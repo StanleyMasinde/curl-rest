@@ -6,6 +6,12 @@ authors = ["Stanley Masinde <hello@stanleymasinde.com>"]
 description = "A reqwest-like REST client built on libcurl for true blocking requests."
 keywords = ["rest", "http", "client", "curl", "blocking"]
 license = "MIT"
+readme = "README.md"
+documentation = "https://docs.rs/curl-rest"
+repository = "https://github.com/StanleyMasinde/curl-rest"
+homepage = "https://github.com/StanleyMasinde/curl-rest"
+categories = ["network-programming", "web-programming::http-client"]
+rust-version = "1.85"
 
 [lib]
 name = "curl_rest"
