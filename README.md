@@ -42,6 +42,10 @@ let resp = curl_rest::Curl::default()
     .get()
     .header(curl_rest::Header::Authorization("Bearer token".into()))
     .header(curl_rest::Header::Accept("application/json".into()))
+    .header(curl_rest::Header::Custom(
+        "X-Request-Id".into(),
+        "req-12345".into(),
+    ))
     .send("https://example.com/private")?;
 # Ok::<(), curl_rest::Error>(())
 ```
