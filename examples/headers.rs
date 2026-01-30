@@ -13,7 +13,9 @@ fn main() {
 
     let resp = curl_rest::Curl::default()
         .get()
-        .header(curl_rest::Header::Authorization(format!("Bearer {token}").into()))
+        .header(curl_rest::Header::Authorization(
+            format!("Bearer {token}").into(),
+        ))
         .header(curl_rest::Header::Accept("application/json".into()))
         .query_param_kv("include", "profile")
         .send(&url)
