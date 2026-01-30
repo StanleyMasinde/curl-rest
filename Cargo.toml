@@ -1,0 +1,34 @@
+[package]
+name = "curl-rest"
+version = "0.1.0"
+edition = "2024"
+authors = ["Stanley Masinde <hello@stanleymasinde.com>"]
+description = "A reqwest-like REST client built on libcurl for true blocking requests."
+keywords = ["rest", "http", "client", "curl", "blocking"]
+license = "MIT"
+
+[lib]
+name = "curl_rest"
+path = "src/lib.rs"
+
+[dependencies]
+clap = { version = "4", features = ["derive"] }
+curl = { version = "0.4", default-features = false }
+percent-encoding = "2"
+thiserror = "2"
+url = "2"
+
+[features]
+default = ["ssl"]
+ssl = ["curl/ssl"]
+rustls = ["curl/rustls"]
+static-curl = ["curl/static-curl"]
+static-ssl = ["curl/static-ssl", "ssl"]
+vendored = ["static-curl", "static-ssl"]
+
+[dev-dependencies]
+criterion = "0.8"
+
+[[bench]]
+name = "builder"
+harness = false
