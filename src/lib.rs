@@ -36,6 +36,7 @@
 //! let resp = curl_rest::Curl::default()
 //!     .get()
 //!     .header(curl_rest::Header::Accept("application/json".into()))
+//!     .header(curl_rest::Header::Custom("X-Request-Id".into(), "req-123".into()))
 //!     .query_param_kv("page", "1")
 //!     .send("https://example.com/api/users")
 //!     .expect("request failed");
@@ -181,13 +182,16 @@ pub enum Error {
     InvalidUrl(String),
     /// The provided header value contained invalid characters.
     #[error("invalid header value for {0}")]
-    InvalidHeaderValue(&'static str),
+    InvalidHeaderValue(String),
+    /// The provided header name contained invalid characters.
+    #[error("invalid header name: {0}")]
+    InvalidHeaderName(String),
     /// The server returned an unrecognized HTTP status code.
     #[error("invalid HTTP status code: {0}")]
     InvalidStatusCode(u32),
 }
 
-/// Common HTTP headers supported by the client.
+/// Common HTTP headers supported by the client, plus `Custom` for non-standard names.
 #[derive(Clone)]
 pub enum Header<'a> {
     /// Authorization header, e.g. "Bearer &lt;token&gt;".
@@ -212,6 +216,10 @@ pub enum Header<'a> {
     Origin(Cow<'a, str>),
     /// Host header.
     Host(Cow<'a, str>),
+    /// Custom header for non-standard names like "X-Request-Id".
+    ///
+    /// Header names must be valid RFC 9110 `token` values (tchar only).
+    Custom(Cow<'a, str>, Cow<'a, str>),
 }
 
 /// Query parameter represented as a key-value pair.
@@ -507,7 +515,7 @@ impl<'a> Curl<'a> {
     /// Sends the request to the provided URL.
     ///
     /// # Errors
-    /// Returns an error if the URL is invalid, a header value is malformed, the
+    /// Returns an error if the URL is invalid, a header name or value is malformed, the
     /// status code is unrecognized, or libcurl reports a failure.
     pub fn send(self, url: &str) -> Result<Response, Error> {
         let mut easy = Easy2::new(Collector(Vec::new()));
@@ -547,7 +555,11 @@ impl<'a> Curl<'a> {
     fn has_content_type_header(&self) -> bool {
         self.headers
             .iter()
-            .any(|header| matches!(header, Header::ContentType(_)))
+            .any(|header| match header {
+                Header::ContentType(_) => true,
+                Header::Custom(name, _) => name.eq_ignore_ascii_case("Content-Type"),
+                _ => false,
+            })
     }
 
     fn body_content_type(&self) -> Option<&'static str> {
@@ -582,7 +594,10 @@ impl Header<'_> {
         let name = self.name();
         let value = self.value();
         if value.contains('\n') || value.contains('\r') {
-            return Err(Error::InvalidHeaderValue(name));
+            return Err(Error::InvalidHeaderValue(name.to_string()));
+        }
+        if matches!(self, Header::Custom(_, _)) {
+            validate_header_name(name)?;
         }
         match self {
             Header::Authorization(value) => Ok(format!("Authorization: {value}")),
@@ -595,10 +610,11 @@ impl Header<'_> {
             Header::Referer(value) => Ok(format!("Referer: {value}")),
             Header::Origin(value) => Ok(format!("Origin: {value}")),
             Header::Host(value) => Ok(format!("Host: {value}")),
+            Header::Custom(name, value) => Ok(format!("{}: {}", name, value)),
         }
     }
 
-    fn name(&self) -> &'static str {
+    fn name(&self) -> &str {
         match self {
             Header::Authorization(_) => "Authorization",
             Header::Accept(_) => "Accept",
@@ -610,6 +626,7 @@ impl Header<'_> {
             Header::Referer(_) => "Referer",
             Header::Origin(_) => "Origin",
             Header::Host(_) => "Host",
+            Header::Custom(name, _) => name.as_ref(),
         }
     }
 
@@ -625,6 +642,7 @@ impl Header<'_> {
             Header::Referer(value) => value.as_ref(),
             Header::Origin(value) => value.as_ref(),
             Header::Host(value) => value.as_ref(),
+            Header::Custom(_, value) => value.as_ref(),
         }
     }
 }
@@ -715,6 +733,26 @@ fn validate_url(url: &str) -> Result<(), Error> {
         .map_err(|_| Error::InvalidUrl(url.to_string()))
 }
 
+fn validate_header_name(name: &str) -> Result<(), Error> {
+    if name.is_empty() {
+        return Err(Error::InvalidHeaderName(name.to_string()));
+    }
+    for b in name.bytes() {
+        if !is_tchar(b) {
+            return Err(Error::InvalidHeaderName(name.to_string()));
+        }
+    }
+    Ok(())
+}
+
+fn is_tchar(b: u8) -> bool {
+    matches!(
+        b,
+        b'!' | b'#' | b'$' | b'%' | b'&' | b'\'' | b'*' | b'+' | b'-' | b'.' | b'^' | b'_' | b'`'
+            | b'|' | b'~' | b'0'..=b'9' | b'a'..=b'z' | b'A'..=b'Z'
+    )
+}
+
 /// Sends a request with the given verb and URL using default builder settings.
 ///
 /// # Errors
@@ -734,7 +772,7 @@ pub fn request(verb: Verb, url: &str) -> Result<Response, Error> {
 /// Sends a request with the given verb, URL, and headers using default builder settings.
 ///
 /// # Errors
-/// Returns an error if the URL is invalid, a header value is malformed, the
+/// Returns an error if the URL is invalid, a header name or value is malformed, the
 /// status code is unrecognized, or libcurl reports a failure.
 ///
 /// # Examples
@@ -793,7 +831,7 @@ pub fn post(url: &str) -> Result<Response, Error> {
 /// Sends a GET request with headers using default builder settings.
 ///
 /// # Errors
-/// Returns an error if the URL is invalid, a header value is malformed, the
+/// Returns an error if the URL is invalid, a header name or value is malformed, the
 /// status code is unrecognized, or libcurl reports a failure.
 ///
 /// # Examples
@@ -815,7 +853,7 @@ pub fn get_with_headers(url: &str, headers: &[Header<'_>]) -> Result<Response, E
 /// Sends a POST request with headers using default builder settings.
 ///
 /// # Errors
-/// Returns an error if the URL is invalid, a header value is malformed, the
+/// Returns an error if the URL is invalid, a header name or value is malformed, the
 /// status code is unrecognized, or libcurl reports a failure.
 ///
 /// # Examples
@@ -868,7 +906,21 @@ mod tests {
     fn header_rejects_newlines() {
         let header = Header::UserAgent("bad\r\nvalue".into());
         let err = header.to_line().expect_err("expected invalid header");
-        assert!(matches!(err, Error::InvalidHeaderValue("User-Agent")));
+        assert!(matches!(err, Error::InvalidHeaderValue(name) if name == "User-Agent"));
+    }
+
+    #[test]
+    fn custom_header_rejects_invalid_name() {
+        let header = Header::Custom("X Bad".into(), "ok".into());
+        let err = header.to_line().expect_err("expected invalid header name");
+        assert!(matches!(err, Error::InvalidHeaderName(name) if name == "X Bad"));
+    }
+
+    #[test]
+    fn custom_header_allows_standard_token_chars() {
+        let header = Header::Custom("X-Request-Id".into(), "abc123".into());
+        let line = header.to_line().expect("expected valid header");
+        assert_eq!(line, "X-Request-Id: abc123");
     }
 
     #[test]
