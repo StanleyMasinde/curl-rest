@@ -564,30 +564,26 @@ impl<'a> Curl<'a> {
         let status_code = easy.response_code()?;
         let status_u16 =
             u16::try_from(status_code).map_err(|_| Error::InvalidStatusCode(status_code))?;
-        let status = StatusCode::from_u16(status_u16)
-            .ok_or(Error::InvalidStatusCode(status_code))?;
+        let status =
+            StatusCode::from_u16(status_u16).ok_or(Error::InvalidStatusCode(status_code))?;
         let body = easy.get_ref().0.clone();
         Ok(Response { status, body })
     }
 
     fn has_content_type_header(&self) -> bool {
-        self.headers
-            .iter()
-            .any(|header| match header {
-                Header::ContentType(_) => true,
-                Header::Custom(name, _) => name.eq_ignore_ascii_case("Content-Type"),
-                _ => false,
-            })
+        self.headers.iter().any(|header| match header {
+            Header::ContentType(_) => true,
+            Header::Custom(name, _) => name.eq_ignore_ascii_case("Content-Type"),
+            _ => false,
+        })
     }
 
     fn has_user_agent_header(&self) -> bool {
-        self.headers
-            .iter()
-            .any(|header| match header {
-                Header::UserAgent(_) => true,
-                Header::Custom(name, _) => name.eq_ignore_ascii_case("User-Agent"),
-                _ => false,
-            })
+        self.headers.iter().any(|header| match header {
+            Header::UserAgent(_) => true,
+            Header::Custom(name, _) => name.eq_ignore_ascii_case("User-Agent"),
+            _ => false,
+        })
     }
 
     fn body_content_type(&self) -> Option<&'static str> {
@@ -977,8 +973,7 @@ mod tests {
 
     #[test]
     fn user_agent_detection_handles_custom_header() {
-        let curl = Curl::default()
-            .header(Header::Custom("User-Agent".into(), "custom".into()));
+        let curl = Curl::default().header(Header::Custom("User-Agent".into(), "custom".into()));
         assert!(curl.has_user_agent_header());
     }
 
