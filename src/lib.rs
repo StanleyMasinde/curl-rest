@@ -268,6 +268,7 @@ pub struct Curl<'a> {
     headers: Vec<Header<'a>>,
     query: Vec<QueryParam<'a>>,
     body: Option<Body<'a>>,
+    default_user_agent: Option<Cow<'a, str>>,
 }
 
 impl<'a> Default for Curl<'a> {
@@ -277,6 +278,7 @@ impl<'a> Default for Curl<'a> {
             headers: Vec::new(),
             query: Vec::new(),
             body: None,
+            default_user_agent: None,
         }
     }
 }
@@ -285,6 +287,16 @@ impl<'a> Curl<'a> {
     /// Creates a new builder with default settings (GET, no headers, no query).
     pub fn new() -> Self {
         Self::default()
+    }
+
+    /// Creates a new builder with a default User-Agent header.
+    ///
+    /// The User-Agent is only applied if the request does not already set one.
+    pub fn with_user_agent(agent: impl Into<Cow<'a, str>>) -> Self {
+        Self {
+            default_user_agent: Some(agent.into()),
+            ..Self::default()
+        }
     }
 
     /// Sets the HTTP verb explicitly.
@@ -526,6 +538,12 @@ impl<'a> Curl<'a> {
             list.append(&header.to_line()?)?;
             has_headers = true;
         }
+        if let Some(default_user_agent) = &self.default_user_agent {
+            if !self.has_user_agent_header() {
+                list.append(&format!("User-Agent: {default_user_agent}"))?;
+                has_headers = true;
+            }
+        }
         if let Some(content_type) = self.body_content_type() {
             if !self.has_content_type_header() {
                 list.append(&format!("Content-Type: {content_type}"))?;
@@ -558,6 +576,16 @@ impl<'a> Curl<'a> {
             .any(|header| match header {
                 Header::ContentType(_) => true,
                 Header::Custom(name, _) => name.eq_ignore_ascii_case("Content-Type"),
+                _ => false,
+            })
+    }
+
+    fn has_user_agent_header(&self) -> bool {
+        self.headers
+            .iter()
+            .any(|header| match header {
+                Header::UserAgent(_) => true,
+                Header::Custom(name, _) => name.eq_ignore_ascii_case("User-Agent"),
                 _ => false,
             })
     }
@@ -939,6 +967,19 @@ mod tests {
             .header(Header::ContentType("application/custom+json".into()));
         assert!(curl.has_content_type_header());
         assert_eq!(curl.body_content_type(), Some("application/json"));
+    }
+
+    #[test]
+    fn with_user_agent_sets_default() {
+        let curl = Curl::with_user_agent("my-agent/1.0");
+        assert_eq!(curl.default_user_agent.as_deref(), Some("my-agent/1.0"));
+    }
+
+    #[test]
+    fn user_agent_detection_handles_custom_header() {
+        let curl = Curl::default()
+            .header(Header::Custom("User-Agent".into(), "custom".into()));
+        assert!(curl.has_user_agent_header());
     }
 
     #[test]
