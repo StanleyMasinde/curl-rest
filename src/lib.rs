@@ -1,6 +1,6 @@
 //! A small, blocking REST client built on libcurl.
 //!
-//! The API is a builder centered around `Curl`, with GET as the default method.
+//! The API is a builder centered around `Client`, with GET as the default method.
 //! Use `send` as the terminal operation.
 //!
 //! # libcurl dependency
