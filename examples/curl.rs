@@ -12,15 +12,15 @@ fn main() {
     });
 
     let verb = match verb.to_uppercase().as_str() {
-        "GET" => curl_rest::Verb::Get,
-        "POST" => curl_rest::Verb::Post,
-        "PUT" => curl_rest::Verb::Put,
-        "DELETE" => curl_rest::Verb::Delete,
-        "HEAD" => curl_rest::Verb::Head,
-        "OPTIONS" => curl_rest::Verb::Options,
-        "PATCH" => curl_rest::Verb::Patch,
-        "CONNECT" => curl_rest::Verb::Connect,
-        "TRACE" => curl_rest::Verb::Trace,
+        "GET" => curl_rest::Method::Get,
+        "POST" => curl_rest::Method::Post,
+        "PUT" => curl_rest::Method::Put,
+        "DELETE" => curl_rest::Method::Delete,
+        "HEAD" => curl_rest::Method::Head,
+        "OPTIONS" => curl_rest::Method::Options,
+        "PATCH" => curl_rest::Method::Patch,
+        "CONNECT" => curl_rest::Method::Connect,
+        "TRACE" => curl_rest::Method::Trace,
         _ => {
             eprintln!("unsupported verb: {verb}");
             std::process::exit(2);
@@ -28,7 +28,7 @@ fn main() {
     };
 
     let resp = curl_rest::Curl::default()
-        .verb(verb)
+        .method(verb)
         .send(&url)
         .expect("request failed");
     eprintln!("Status: {}", resp.status);

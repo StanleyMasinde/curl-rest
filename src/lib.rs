@@ -1,6 +1,6 @@
 //! A small, blocking REST client built on libcurl.
 //!
-//! The API is a builder centered around `Curl`, with GET as the default verb.
+//! The API is a builder centered around `Curl`, with GET as the default method.
 //! Use `send` as the terminal operation.
 //!
 //! # libcurl dependency
@@ -229,8 +229,8 @@ pub struct QueryParam<'a> {
     value: Cow<'a, str>,
 }
 
-/// Supported HTTP verbs.
-pub enum Verb {
+/// Supported HTTP methods.
+pub enum Method {
     /// HTTP GET.
     Get,
     /// HTTP POST.
@@ -264,7 +264,7 @@ impl Handler for Collector {
 ///
 /// Defaults to GET when created via `Default`.
 pub struct Curl<'a> {
-    verb: Verb,
+    method: Method,
     headers: Vec<Header<'a>>,
     query: Vec<QueryParam<'a>>,
     body: Option<Body<'a>>,
@@ -274,7 +274,7 @@ pub struct Curl<'a> {
 impl<'a> Default for Curl<'a> {
     fn default() -> Self {
         Self {
-            verb: Verb::Get,
+            method: Method::Get,
             headers: Vec::new(),
             query: Vec::new(),
             body: None,
@@ -299,55 +299,55 @@ impl<'a> Curl<'a> {
         }
     }
 
-    /// Sets the HTTP verb explicitly.
-    pub fn verb(mut self, verb: Verb) -> Self {
-        self.verb = verb;
+    /// Sets the HTTP method explicitly.
+    pub fn method(mut self, method: Method) -> Self {
+        self.method = method;
         self
     }
 
-    /// Sets the request verb to GET.
+    /// Sets the request method to GET.
     pub fn get(self) -> Self {
-        self.verb(Verb::Get)
+        self.method(Method::Get)
     }
 
-    /// Sets the request verb to POST.
+    /// Sets the request method to POST.
     pub fn post(self) -> Self {
-        self.verb(Verb::Post)
+        self.method(Method::Post)
     }
 
-    /// Sets the request verb to PUT.
+    /// Sets the request method to PUT.
     pub fn put(self) -> Self {
-        self.verb(Verb::Put)
+        self.method(Method::Put)
     }
 
-    /// Sets the request verb to DELETE.
+    /// Sets the request method to DELETE.
     pub fn delete(self) -> Self {
-        self.verb(Verb::Delete)
+        self.method(Method::Delete)
     }
 
-    /// Sets the request verb to HEAD.
+    /// Sets the request method to HEAD.
     pub fn head(self) -> Self {
-        self.verb(Verb::Head)
+        self.method(Method::Head)
     }
 
-    /// Sets the request verb to OPTIONS.
+    /// Sets the request method to OPTIONS.
     pub fn options(self) -> Self {
-        self.verb(Verb::Options)
+        self.method(Method::Options)
     }
 
-    /// Sets the request verb to PATCH.
+    /// Sets the request method to PATCH.
     pub fn patch(self) -> Self {
-        self.verb(Verb::Patch)
+        self.method(Method::Patch)
     }
 
-    /// Sets the request verb to CONNECT.
+    /// Sets the request method to CONNECT.
     pub fn connect(self) -> Self {
-        self.verb(Verb::Connect)
+        self.method(Method::Connect)
     }
 
-    /// Sets the request verb to TRACE.
+    /// Sets the request method to TRACE.
     pub fn trace(self) -> Self {
-        self.verb(Verb::Trace)
+        self.method(Method::Trace)
     }
 
     /// Adds a single header.
@@ -531,7 +531,7 @@ impl<'a> Curl<'a> {
     /// status code is unrecognized, or libcurl reports a failure.
     pub fn send(self, url: &str) -> Result<Response, Error> {
         let mut easy = Easy2::new(Collector(Vec::new()));
-        self.verb.apply(&mut easy)?;
+        self.method.apply(&mut easy)?;
         let mut list = List::new();
         let mut has_headers = false;
         for header in &self.headers {
@@ -596,18 +596,18 @@ impl<'a> Curl<'a> {
     }
 }
 
-impl Verb {
+impl Method {
     fn apply(&self, easy: &mut Easy2<Collector>) -> Result<(), Error> {
         match self {
-            Verb::Get => easy.get(true)?,
-            Verb::Post => easy.post(true)?,
-            Verb::Put => easy.custom_request("PUT")?,
-            Verb::Delete => easy.custom_request("DELETE")?,
-            Verb::Head => easy.nobody(true)?,
-            Verb::Options => easy.custom_request("OPTIONS")?,
-            Verb::Patch => easy.custom_request("PATCH")?,
-            Verb::Connect => easy.custom_request("CONNECT")?,
-            Verb::Trace => easy.custom_request("TRACE")?,
+            Method::Get => easy.get(true)?,
+            Method::Post => easy.post(true)?,
+            Method::Put => easy.custom_request("PUT")?,
+            Method::Delete => easy.custom_request("DELETE")?,
+            Method::Head => easy.nobody(true)?,
+            Method::Options => easy.custom_request("OPTIONS")?,
+            Method::Patch => easy.custom_request("PATCH")?,
+            Method::Connect => easy.custom_request("CONNECT")?,
+            Method::Trace => easy.custom_request("TRACE")?,
         }
         Ok(())
     }
@@ -777,7 +777,7 @@ fn is_tchar(b: u8) -> bool {
     )
 }
 
-/// Sends a request with the given verb and URL using default builder settings.
+/// Sends a request with the given method and URL using default builder settings.
 ///
 /// # Errors
 /// Returns an error if the URL is invalid, the status code is unrecognized, or
@@ -785,15 +785,15 @@ fn is_tchar(b: u8) -> bool {
 ///
 /// # Examples
 /// ```no_run
-/// let resp = curl_rest::request(curl_rest::Verb::Get, "https://example.com")?;
+/// let resp = curl_rest::request(curl_rest::Method::Get, "https://example.com")?;
 /// println!("Status: {}", resp.status);
 /// # Ok::<(), curl_rest::Error>(())
 /// ```
-pub fn request(verb: Verb, url: &str) -> Result<Response, Error> {
-    Curl::default().verb(verb).send(url)
+pub fn request(method: Method, url: &str) -> Result<Response, Error> {
+    Curl::default().method(method).send(url)
 }
 
-/// Sends a request with the given verb, URL, and headers using default builder settings.
+/// Sends a request with the given method, URL, and headers using default builder settings.
 ///
 /// # Errors
 /// Returns an error if the URL is invalid, a header name or value is malformed, the
@@ -802,7 +802,7 @@ pub fn request(verb: Verb, url: &str) -> Result<Response, Error> {
 /// # Examples
 /// ```no_run
 /// let resp = curl_rest::request_with_headers(
-///     curl_rest::Verb::Get,
+///     curl_rest::Method::Get,
 ///     "https://example.com",
 ///     &[curl_rest::Header::AcceptEncoding("gzip".into())],
 /// )?;
@@ -810,12 +810,12 @@ pub fn request(verb: Verb, url: &str) -> Result<Response, Error> {
 /// # Ok::<(), curl_rest::Error>(())
 /// ```
 pub fn request_with_headers(
-    verb: Verb,
+    method: Method,
     url: &str,
     headers: &[Header<'_>],
 ) -> Result<Response, Error> {
     Curl::default()
-        .verb(verb)
+        .method(method)
         .headers(headers.iter().cloned())
         .send(url)
 }
