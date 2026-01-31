@@ -1,6 +1,6 @@
 [package]
 name = "curl-rest"
-version = "0.1.0"
+version = "0.2.0"
 edition = "2024"
 authors = ["Stanley Masinde <hello@stanleymasinde.com>"]
 description = "A reqwest-like REST client built on libcurl for true blocking requests."
