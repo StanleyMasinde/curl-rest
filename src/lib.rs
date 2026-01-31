@@ -1,10 +1,6 @@
 //! A small, blocking REST client built on libcurl.
 //!
-<<<<<<< Updated upstream
 //! The API is a builder centered around `Curl`, with GET as the default method.
-=======
-//! The API is a builder centered around `Client`, with GET as the default verb.
->>>>>>> Stashed changes
 //! Use `send` as the terminal operation.
 //!
 //! # libcurl dependency
@@ -267,13 +263,8 @@ impl Handler for Collector {
 /// Builder for constructing and sending a blocking HTTP request.
 ///
 /// Defaults to GET when created via `Default`.
-<<<<<<< Updated upstream
-pub struct Curl<'a> {
-    method: Method,
-=======
 pub struct Client<'a> {
-    verb: Verb,
->>>>>>> Stashed changes
+    method: Method,
     headers: Vec<Header<'a>>,
     query: Vec<QueryParam<'a>>,
     body: Option<Body<'a>>,
@@ -798,13 +789,8 @@ fn is_tchar(b: u8) -> bool {
 /// println!("Status: {}", resp.status);
 /// # Ok::<(), curl_rest::Error>(())
 /// ```
-<<<<<<< Updated upstream
 pub fn request(method: Method, url: &str) -> Result<Response, Error> {
-    Curl::default().method(method).send(url)
-=======
-pub fn request(verb: Verb, url: &str) -> Result<Response, Error> {
-    Client::default().verb(verb).send(url)
->>>>>>> Stashed changes
+    Client::default().method(method).send(url)
 }
 
 /// Sends a request with the given method, URL, and headers using default builder settings.
@@ -828,13 +814,8 @@ pub fn request_with_headers(
     url: &str,
     headers: &[Header<'_>],
 ) -> Result<Response, Error> {
-<<<<<<< Updated upstream
-    Curl::default()
-        .method(method)
-=======
     Client::default()
-        .verb(verb)
->>>>>>> Stashed changes
+        .method(method)
         .headers(headers.iter().cloned())
         .send(url)
 }

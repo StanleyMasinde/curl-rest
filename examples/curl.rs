@@ -27,13 +27,8 @@ fn main() {
         }
     };
 
-<<<<<<< Updated upstream
-    let resp = curl_rest::Curl::default()
-        .method(verb)
-=======
     let resp = curl_rest::Client::default()
-        .verb(verb)
->>>>>>> Stashed changes
+        .method(verb)
         .send(&url)
         .expect("request failed");
     eprintln!("Status: {}", resp.status);
