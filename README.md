@@ -7,13 +7,6 @@ A Reqwest-like REST client built on libcurl for true blocking requests.
 cargo add curl-rest
 ```
 
-Or manually
-
-```toml
-[dependencies]
-curl-rest = "0.1"
-```
-
 ### libcurl dependency
 
 `curl-rest` is backed by libcurl, so your build will need a libcurl development package available on the system (for example, installed via your OS package manager). If you prefer a vendored build or static linking, enable the appropriate `curl`/`curl-sys` features in your application so Cargo propagates them to this crate.
