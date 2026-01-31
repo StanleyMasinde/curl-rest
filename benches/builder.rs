@@ -4,7 +4,7 @@ use std::hint::black_box;
 fn builder_basic(c: &mut Criterion) {
     c.bench_function("builder_basic", |b| {
         b.iter(|| {
-            let curl = curl_rest::Curl::default()
+            let curl = curl_rest::Client::default()
                 .get()
                 .header(curl_rest::Header::Accept("application/json".into()))
                 .header(curl_rest::Header::UserAgent("curl-rest/0.1".into()))
@@ -19,7 +19,7 @@ fn builder_basic(c: &mut Criterion) {
 fn builder_many(c: &mut Criterion) {
     c.bench_function("builder_many", |b| {
         b.iter(|| {
-            let curl = curl_rest::Curl::default()
+            let curl = curl_rest::Client::default()
                 .post()
                 .headers([
                     curl_rest::Header::Accept("application/json".into()),
