@@ -11,7 +11,7 @@ fn main() {
         std::process::exit(2);
     });
 
-    let resp = curl_rest::Curl::default()
+    let resp = curl_rest::Client::default()
         .get()
         .header(curl_rest::Header::Authorization(
             format!("Bearer {token}").into(),

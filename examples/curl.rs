@@ -27,7 +27,7 @@ fn main() {
         }
     };
 
-    let resp = curl_rest::Curl::default()
+    let resp = curl_rest::Client::default()
         .method(verb)
         .send(&url)
         .expect("request failed");

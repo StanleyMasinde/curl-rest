@@ -1,6 +1,6 @@
 //! A small, blocking REST client built on libcurl.
 //!
-//! The API is a builder centered around `Curl`, with GET as the default method.
+//! The API is a builder centered around `Client`, with GET as the default method.
 //! Use `send` as the terminal operation.
 //!
 //! # libcurl dependency
@@ -23,7 +23,7 @@
 //! let resp = curl_rest::get("https://example.com")?;
 //! println!("Status: {}", resp.status);
 //!
-//! let resp = curl_rest::Curl::default()
+//! let resp = curl_rest::Client::default()
 //!     .post()
 //!     .body_json(r#"{"name":"stanley"}"#)
 //!     .send("https://example.com/users")?;
@@ -33,7 +33,7 @@
 //!
 //! # Examples
 //! ```no_run
-//! let resp = curl_rest::Curl::default()
+//! let resp = curl_rest::Client::default()
 //!     .get()
 //!     .header(curl_rest::Header::Accept("application/json".into()))
 //!     .header(curl_rest::Header::Custom("X-Request-Id".into(), "req-123".into()))
@@ -176,7 +176,7 @@ status_codes! {
 pub enum Error {
     /// Error reported by libcurl.
     #[error("curl error: {0}")]
-    Curl(#[from] curl::Error),
+    Client(#[from] curl::Error),
     /// The provided URL could not be parsed.
     #[error("invalid url: {0}")]
     InvalidUrl(String),
@@ -263,7 +263,7 @@ impl Handler for Collector {
 /// Builder for constructing and sending a blocking HTTP request.
 ///
 /// Defaults to GET when created via `Default`.
-pub struct Curl<'a> {
+pub struct Client<'a> {
     method: Method,
     headers: Vec<Header<'a>>,
     query: Vec<QueryParam<'a>>,
@@ -271,7 +271,10 @@ pub struct Curl<'a> {
     default_user_agent: Option<Cow<'a, str>>,
 }
 
-impl<'a> Default for Curl<'a> {
+#[deprecated(note = "Renamed to Client; use Client instead.")]
+pub type Curl<'a> = Client<'a>;
+
+impl<'a> Default for Client<'a> {
     fn default() -> Self {
         Self {
             method: Method::Get,
@@ -283,7 +286,7 @@ impl<'a> Default for Curl<'a> {
     }
 }
 
-impl<'a> Curl<'a> {
+impl<'a> Client<'a> {
     /// Creates a new builder with default settings (GET, no headers, no query).
     pub fn new() -> Self {
         Self::default()
@@ -354,7 +357,7 @@ impl<'a> Curl<'a> {
     ///
     /// # Examples
     /// ```no_run
-    /// let resp = curl_rest::Curl::default()
+    /// let resp = curl_rest::Client::default()
     ///     .get()
     ///     .header(curl_rest::Header::Authorization("Bearer token".into()))
     ///     .send("https://example.com/private")?;
@@ -372,7 +375,7 @@ impl<'a> Curl<'a> {
     ///
     /// # Examples
     /// ```no_run
-    /// let resp = curl_rest::Curl::default()
+    /// let resp = curl_rest::Client::default()
     ///     .get()
     ///     .headers([
     ///         curl_rest::Header::Accept("application/json".into()),
@@ -396,7 +399,7 @@ impl<'a> Curl<'a> {
     ///
     /// # Examples
     /// ```no_run
-    /// let resp = curl_rest::Curl::default()
+    /// let resp = curl_rest::Client::default()
     ///     .get()
     ///     .query_param(curl_rest::QueryParam::new("q", "rust"))
     ///     .send("https://example.com/search")?;
@@ -414,7 +417,7 @@ impl<'a> Curl<'a> {
     ///
     /// # Examples
     /// ```no_run
-    /// let resp = curl_rest::Curl::default()
+    /// let resp = curl_rest::Client::default()
     ///     .get()
     ///     .query_param_kv("page", "1")
     ///     .send("https://example.com/search")?;
@@ -435,7 +438,7 @@ impl<'a> Curl<'a> {
     ///
     /// # Examples
     /// ```no_run
-    /// let resp = curl_rest::Curl::default()
+    /// let resp = curl_rest::Client::default()
     ///     .get()
     ///     .query_params([
     ///         curl_rest::QueryParam::new("sort", "desc"),
@@ -459,7 +462,7 @@ impl<'a> Curl<'a> {
     ///
     /// # Examples
     /// ```no_run
-    /// let resp = curl_rest::Curl::default()
+    /// let resp = curl_rest::Client::default()
     ///     .post()
     ///     .body(curl_rest::Body::Text("hello".into()))
     ///     .send("https://example.com/echo")?;
@@ -477,7 +480,7 @@ impl<'a> Curl<'a> {
     ///
     /// # Examples
     /// ```no_run
-    /// let resp = curl_rest::Curl::default()
+    /// let resp = curl_rest::Client::default()
     ///     .post()
     ///     .body_bytes(vec![1, 2, 3])
     ///     .send("https://example.com/bytes")?;
@@ -494,7 +497,7 @@ impl<'a> Curl<'a> {
     ///
     /// # Examples
     /// ```no_run
-    /// let resp = curl_rest::Curl::default()
+    /// let resp = curl_rest::Client::default()
     ///     .post()
     ///     .body_text("hello")
     ///     .send("https://example.com/echo")?;
@@ -511,7 +514,7 @@ impl<'a> Curl<'a> {
     ///
     /// # Examples
     /// ```no_run
-    /// let resp = curl_rest::Curl::default()
+    /// let resp = curl_rest::Client::default()
     ///     .post()
     ///     .body_json(r#"{"name":"stanley"}"#)
     ///     .send("https://example.com/users")?;
@@ -695,7 +698,7 @@ impl<'a> QueryParam<'a> {
     ///
     /// # Examples
     /// ```no_run
-    /// let resp = curl_rest::Curl::default()
+    /// let resp = curl_rest::Client::default()
     ///     .get()
     ///     .query_param(curl_rest::QueryParam::new("page", "2"))
     ///     .send("https://example.com/search")?;
@@ -790,7 +793,7 @@ fn is_tchar(b: u8) -> bool {
 /// # Ok::<(), curl_rest::Error>(())
 /// ```
 pub fn request(method: Method, url: &str) -> Result<Response, Error> {
-    Curl::default().method(method).send(url)
+    Client::default().method(method).send(url)
 }
 
 /// Sends a request with the given method, URL, and headers using default builder settings.
@@ -814,7 +817,7 @@ pub fn request_with_headers(
     url: &str,
     headers: &[Header<'_>],
 ) -> Result<Response, Error> {
-    Curl::default()
+    Client::default()
         .method(method)
         .headers(headers.iter().cloned())
         .send(url)
@@ -833,7 +836,7 @@ pub fn request_with_headers(
 /// # Ok::<(), curl_rest::Error>(())
 /// ```
 pub fn get(url: &str) -> Result<Response, Error> {
-    Curl::default().get().send(url)
+    Client::default().get().send(url)
 }
 
 /// Sends a POST request using default builder settings.
@@ -849,7 +852,7 @@ pub fn get(url: &str) -> Result<Response, Error> {
 /// # Ok::<(), curl_rest::Error>(())
 /// ```
 pub fn post(url: &str) -> Result<Response, Error> {
-    Curl::default().post().send(url)
+    Client::default().post().send(url)
 }
 
 /// Sends a GET request with headers using default builder settings.
@@ -868,7 +871,7 @@ pub fn post(url: &str) -> Result<Response, Error> {
 /// # Ok::<(), curl_rest::Error>(())
 /// ```
 pub fn get_with_headers(url: &str, headers: &[Header<'_>]) -> Result<Response, Error> {
-    Curl::default()
+    Client::default()
         .get()
         .headers(headers.iter().cloned())
         .send(url)
@@ -890,7 +893,7 @@ pub fn get_with_headers(url: &str, headers: &[Header<'_>]) -> Result<Response, E
 /// # Ok::<(), curl_rest::Error>(())
 /// ```
 pub fn post_with_headers(url: &str, headers: &[Header<'_>]) -> Result<Response, Error> {
-    Curl::default()
+    Client::default()
         .post()
         .headers(headers.iter().cloned())
         .send(url)
@@ -949,16 +952,16 @@ mod tests {
 
     #[test]
     fn body_content_type_defaults() {
-        let curl = Curl::default().body_json(r#"{"ok":true}"#);
+        let curl = Client::default().body_json(r#"{"ok":true}"#);
         assert_eq!(curl.body_content_type(), Some("application/json"));
 
-        let curl = Curl::default().body_text("hi");
+        let curl = Client::default().body_text("hi");
         assert_eq!(curl.body_content_type(), Some("text/plain; charset=utf-8"));
     }
 
     #[test]
     fn content_type_header_overrides_body_default() {
-        let curl = Curl::default()
+        let curl = Client::default()
             .body_json(r#"{"ok":true}"#)
             .header(Header::ContentType("application/custom+json".into()));
         assert!(curl.has_content_type_header());
@@ -967,13 +970,13 @@ mod tests {
 
     #[test]
     fn with_user_agent_sets_default() {
-        let curl = Curl::with_user_agent("my-agent/1.0");
+        let curl = Client::with_user_agent("my-agent/1.0");
         assert_eq!(curl.default_user_agent.as_deref(), Some("my-agent/1.0"));
     }
 
     #[test]
     fn user_agent_detection_handles_custom_header() {
-        let curl = Curl::default().header(Header::Custom("User-Agent".into(), "custom".into()));
+        let curl = Client::default().header(Header::Custom("User-Agent".into(), "custom".into()));
         assert!(curl.has_user_agent_header());
     }
 
