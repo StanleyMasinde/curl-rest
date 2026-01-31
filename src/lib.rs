@@ -271,6 +271,9 @@ pub struct Client<'a> {
     default_user_agent: Option<Cow<'a, str>>,
 }
 
+#[deprecated(note = "Renamed to Client; use Client instead.")]
+pub type Curl<'a> = Client<'a>;
+
 impl<'a> Default for Client<'a> {
     fn default() -> Self {
         Self {
