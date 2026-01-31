@@ -22,7 +22,7 @@ This crate exposes a few convenience features (default is `ssl`):
 ## Usage
 
 ```rust
-let resp = curl_rest::Curl::default()
+let resp = curl_rest::Client::default()
     .get()
     .header(curl_rest::Header::Accept("application/json".into()))
     .query_param_kv("page", "1")
@@ -36,7 +36,7 @@ println!("{}", String::from_utf8_lossy(&resp.body));
 ### Default User-Agent
 
 ```rust
-let resp = curl_rest::Curl::with_user_agent("my-app/1.0")
+let resp = curl_rest::Client::with_user_agent("my-app/1.0")
     .get()
     .header(curl_rest::Header::Accept("application/json".into()))
     .send("https://example.com/api/users")?;
@@ -48,7 +48,7 @@ If you set a `User-Agent` header explicitly, it overrides the default.
 ### Headers
 
 ```rust
-let resp = curl_rest::Curl::default()
+let resp = curl_rest::Client::default()
     .get()
     .header(curl_rest::Header::Authorization("Bearer token".into()))
     .header(curl_rest::Header::Accept("application/json".into()))
@@ -63,7 +63,7 @@ let resp = curl_rest::Curl::default()
 ### Query params
 
 ```rust
-let resp = curl_rest::Curl::default()
+let resp = curl_rest::Client::default()
     .get()
     .query_param_kv("q", "rust")
     .query_param_kv("page", "2")
@@ -74,7 +74,7 @@ let resp = curl_rest::Curl::default()
 ### JSON body
 
 ```rust
-let resp = curl_rest::Curl::default()
+let resp = curl_rest::Client::default()
     .post()
     .body_json(r#"{"name":"stanley"}"#)
     .send("https://example.com/users")?;
