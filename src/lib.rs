@@ -45,7 +45,7 @@
 
 use curl::easy::{Easy2, Handler, List, WriteError};
 use percent_encoding::{NON_ALPHANUMERIC, utf8_percent_encode};
-use std::{borrow::Cow, default};
+use std::borrow::Cow;
 use thiserror::Error;
 use url::Url;
 
@@ -237,7 +237,7 @@ pub struct QueryParam<'a> {
 }
 
 /// Supported HTTP methods.
-#[derive(Default)]
+#[derive(Default, Clone)]
 pub enum Method {
     /// HTTP GET.
     #[default]
