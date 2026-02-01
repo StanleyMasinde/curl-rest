@@ -50,6 +50,7 @@ use thiserror::Error;
 use url::Url;
 
 /// HTTP response container returned by `send`.
+#[derive(Debug, Clone, Default)]
 pub struct Response {
     /// Status code returned by the server.
     pub status: StatusCode,
@@ -101,6 +102,12 @@ macro_rules! status_codes {
         impl std::fmt::Display for StatusCode {
             fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
                 write!(f, "{} {}", self.as_u16(), self.canonical_reason())
+            }
+        }
+
+        impl Default for StatusCode {
+            fn default() -> Self {
+                StatusCode::Ok
             }
         }
     };
@@ -1005,5 +1012,10 @@ mod tests {
         let header = Header::Accept("application/json".into());
         assert_eq!(header.name(), "Accept");
         assert_eq!(header.value(), "application/json");
+    }
+
+    #[test]
+    fn status_code_default_is_ok() {
+        assert_eq!(StatusCode::default(), StatusCode::Ok);
     }
 }
