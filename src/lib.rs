@@ -237,7 +237,7 @@ pub struct QueryParam<'a> {
 }
 
 /// Supported HTTP methods.
-#[derive(Default, Clone)]
+#[derive(Debug, Default, Clone)]
 pub enum Method {
     /// HTTP GET.
     #[default]
