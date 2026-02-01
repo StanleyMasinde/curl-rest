@@ -22,5 +22,8 @@ fn main() {
         .expect("request failed");
 
     eprintln!("Status: {}", resp.status);
+    for header in &resp.headers {
+        eprintln!("{}: {}", header.name, header.value);
+    }
     println!("{}", String::from_utf8_lossy(&resp.body));
 }

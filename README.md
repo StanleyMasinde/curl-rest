@@ -30,6 +30,9 @@ let resp = curl_rest::Client::default()
     .expect("request failed");
 
 println!("Status: {}", resp.status);
+for header in &resp.headers {
+    println!("{}: {}", header.name, header.value);
+}
 println!("{}", String::from_utf8_lossy(&resp.body));
 ```
 
@@ -57,8 +60,13 @@ let resp = curl_rest::Client::default()
         "req-12345".into(),
     ))
     .send("https://example.com/private")?;
+for header in &resp.headers {
+    println!("{}: {}", header.name, header.value);
+}
 // Ok::<(), curl_rest::Error>(())
 ```
+
+Response headers are available on `resp.headers` as ordered `name`/`value` pairs.
 
 ### Query params
 

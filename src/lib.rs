@@ -22,6 +22,9 @@
 //! ```no_run
 //! let resp = curl_rest::get("https://example.com")?;
 //! println!("Status: {}", resp.status);
+//! for header in &resp.headers {
+//!     println!("{}: {}", header.name, header.value);
+//! }
 //!
 //! let resp = curl_rest::Client::default()
 //!     .post()
@@ -41,6 +44,9 @@
 //!     .send("https://example.com/api/users")
 //!     .expect("request failed");
 //! println!("Status: {}", resp.status);
+//! for header in &resp.headers {
+//!     println!("{}: {}", header.name, header.value);
+//! }
 //! ```
 
 use curl::easy::{Easy2, Handler, List, WriteError};
@@ -54,8 +60,19 @@ use url::Url;
 pub struct Response {
     /// Status code returned by the server.
     pub status: StatusCode,
+    /// Response headers in received order (including duplicates).
+    pub headers: Vec<ResponseHeader>,
     /// Raw response body bytes.
     pub body: Vec<u8>,
+}
+
+/// A single HTTP response header entry.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct ResponseHeader {
+    /// Header name as received.
+    pub name: String,
+    /// Header value as received (trimmed).
+    pub value: String,
 }
 
 macro_rules! status_codes {
@@ -260,12 +277,63 @@ pub enum Method {
     Trace,
 }
 
-struct Collector(Vec<u8>);
+struct Collector {
+    body: Vec<u8>,
+    headers: Vec<ResponseHeader>,
+}
+
+impl Collector {
+    fn new() -> Self {
+        Self {
+            body: Vec::new(),
+            headers: Vec::new(),
+        }
+    }
+}
 
 impl Handler for Collector {
     fn write(&mut self, data: &[u8]) -> Result<usize, WriteError> {
-        self.0.extend_from_slice(data);
+        self.body.extend_from_slice(data);
         Ok(data.len())
+    }
+
+    fn header(&mut self, data: &[u8]) -> bool {
+        if data.is_empty() {
+            return true;
+        }
+        let Ok(line) = std::str::from_utf8(data) else {
+            return true;
+        };
+        let line = line.trim_end_matches(['\r', '\n']);
+        if line.is_empty() {
+            return true;
+        }
+        if line.starts_with("HTTP/") {
+            return true;
+        }
+        if line.starts_with(' ') || line.starts_with('\t') {
+            if let Some(last) = self.headers.last_mut() {
+                let trimmed = line.trim();
+                if !trimmed.is_empty() {
+                    if !last.value.is_empty() {
+                        last.value.push(' ');
+                    }
+                    last.value.push_str(trimmed);
+                }
+            }
+            return true;
+        }
+        if let Some((name, value)) = line.split_once(':') {
+            let name = name.trim();
+            let value = value.trim();
+            if !name.is_empty() {
+                self.headers.push(ResponseHeader {
+                    name: name.to_string(),
+                    value: value.to_string(),
+                });
+            }
+        }
+        true
     }
 }
 
@@ -542,7 +610,7 @@ impl<'a> Client<'a> {
     /// Returns an error if the URL is invalid, a header name or value is malformed, the
     /// status code is unrecognized, or libcurl reports a failure.
     pub fn send(self, url: &str) -> Result<Response, Error> {
-        let mut easy = Easy2::new(Collector(Vec::new()));
+        let mut easy = Easy2::new(Collector::new());
         self.method.apply(&mut easy)?;
         let mut list = List::new();
         let mut has_headers = false;
@@ -578,8 +646,13 @@ impl<'a> Client<'a> {
             u16::try_from(status_code).map_err(|_| Error::InvalidStatusCode(status_code))?;
         let status =
             StatusCode::from_u16(status_u16).ok_or(Error::InvalidStatusCode(status_code))?;
-        let body = easy.get_ref().0.clone();
-        Ok(Response { status, body })
+        let body = easy.get_ref().body.clone();
+        let headers = easy.get_ref().headers.clone();
+        Ok(Response {
+            status,
+            headers,
+            body,
+        })
     }
 
     fn has_content_type_header(&self) -> bool {
