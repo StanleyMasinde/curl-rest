@@ -638,6 +638,7 @@ impl<'a> Client<'a> {
             easy.follow_location(true)?;
             easy.max_redirections(self.max_redirects as u32)?;
         }
+        easy.accept_encoding("gzip")?;
         let mut list = List::new();
         let mut has_headers = false;
         for header in &self.headers {
