@@ -634,7 +634,7 @@ impl<'a> Client<'a> {
     pub fn send(self, url: &str) -> Result<Response, Error> {
         let mut easy = Easy2::new(Collector::new());
         self.method.apply(&mut easy)?;
-        if self.max_redirects > 1 {
+        if self.max_redirects >= 0 {
             easy.max_redirections(self.max_redirects as u32)?;
         }
         let mut list = List::new();
