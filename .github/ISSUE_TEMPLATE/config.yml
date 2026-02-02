@@ -1,4 +1,6 @@
-blank_issues_enabled: false
+blank_issues_enabled: true
+default_labels:
+  - needs-triage
 contact_links:
   - name: Questions & support
     url: https://github.com/OWNER/REPO/discussions
