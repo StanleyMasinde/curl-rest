@@ -20,12 +20,6 @@
 //!
 //! # Quickstart
 //! ```no_run
-//! let resp = curl_rest::get("https://example.com")?;
-//! println!("Status: {}", resp.status);
-//! for header in &resp.headers {
-//!     println!("{}: {}", header.name, header.value);
-//! }
-//!
 //! let resp = curl_rest::Client::default()
 //!     .post()
 //!     .body_json(r#"{"name":"stanley"}"#)
@@ -887,125 +881,6 @@ fn is_tchar(b: u8) -> bool {
         b'!' | b'#' | b'$' | b'%' | b'&' | b'\'' | b'*' | b'+' | b'-' | b'.' | b'^' | b'_' | b'`'
             | b'|' | b'~' | b'0'..=b'9' | b'a'..=b'z' | b'A'..=b'Z'
     )
-}
-
-/// Sends a request with the given method and URL using default builder settings.
-///
-/// # Errors
-/// Returns an error if the URL is invalid, the status code is unrecognized, or
-/// libcurl reports a failure.
-///
-/// # Examples
-/// ```no_run
-/// let resp = curl_rest::request(curl_rest::Method::Get, "https://example.com")?;
-/// println!("Status: {}", resp.status);
-/// # Ok::<(), curl_rest::Error>(())
-/// ```
-pub fn request(method: Method, url: &str) -> Result<Response, Error> {
-    Client::default().method(method).send(url)
-}
-
-/// Sends a request with the given method, URL, and headers using default builder settings.
-///
-/// # Errors
-/// Returns an error if the URL is invalid, a header name or value is malformed, the
-/// status code is unrecognized, or libcurl reports a failure.
-///
-/// # Examples
-/// ```no_run
-/// let resp = curl_rest::request_with_headers(
-///     curl_rest::Method::Get,
-///     "https://example.com",
-///     &[curl_rest::Header::AcceptEncoding("gzip".into())],
-/// )?;
-/// println!("Status: {}", resp.status);
-/// # Ok::<(), curl_rest::Error>(())
-/// ```
-pub fn request_with_headers(
-    method: Method,
-    url: &str,
-    headers: &[Header<'_>],
-) -> Result<Response, Error> {
-    Client::default()
-        .method(method)
-        .headers(headers.iter().cloned())
-        .send(url)
-}
-
-/// Sends a GET request using default builder settings.
-///
-/// # Errors
-/// Returns an error if the URL is invalid, the status code is unrecognized, or
-/// libcurl reports a failure.
-///
-/// # Examples
-/// ```no_run
-/// let resp = curl_rest::get("https://example.com")?;
-/// println!("Status: {}", resp.status);
-/// # Ok::<(), curl_rest::Error>(())
-/// ```
-pub fn get(url: &str) -> Result<Response, Error> {
-    Client::default().get().send(url)
-}
-
-/// Sends a POST request using default builder settings.
-///
-/// # Errors
-/// Returns an error if the URL is invalid, the status code is unrecognized, or
-/// libcurl reports a failure.
-///
-/// # Examples
-/// ```no_run
-/// let resp = curl_rest::post("https://example.com")?;
-/// println!("Status: {}", resp.status);
-/// # Ok::<(), curl_rest::Error>(())
-/// ```
-pub fn post(url: &str) -> Result<Response, Error> {
-    Client::default().post().send(url)
-}
-
-/// Sends a GET request with headers using default builder settings.
-///
-/// # Errors
-/// Returns an error if the URL is invalid, a header name or value is malformed, the
-/// status code is unrecognized, or libcurl reports a failure.
-///
-/// # Examples
-/// ```no_run
-/// let resp = curl_rest::get_with_headers(
-///     "https://example.com",
-///     &[curl_rest::Header::AcceptEncoding("gzip".into())],
-/// )?;
-/// println!("Status: {}", resp.status);
-/// # Ok::<(), curl_rest::Error>(())
-/// ```
-pub fn get_with_headers(url: &str, headers: &[Header<'_>]) -> Result<Response, Error> {
-    Client::default()
-        .get()
-        .headers(headers.iter().cloned())
-        .send(url)
-}
-
-/// Sends a POST request with headers using default builder settings.
-///
-/// # Errors
-/// Returns an error if the URL is invalid, a header name or value is malformed, the
-/// status code is unrecognized, or libcurl reports a failure.
-///
-/// # Examples
-/// ```no_run
-/// let resp = curl_rest::post_with_headers(
-///     "https://example.com",
-///     &[curl_rest::Header::AcceptEncoding("gzip".into())],
-/// )?;
-/// println!("Status: {}", resp.status);
-/// # Ok::<(), curl_rest::Error>(())
-/// ```
-pub fn post_with_headers(url: &str, headers: &[Header<'_>]) -> Result<Response, Error> {
-    Client::default()
-        .post()
-        .headers(headers.iter().cloned())
-        .send(url)
 }
 
 #[cfg(test)]
