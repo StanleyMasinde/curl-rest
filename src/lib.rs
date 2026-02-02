@@ -635,6 +635,7 @@ impl<'a> Client<'a> {
         let mut easy = Easy2::new(Collector::new());
         self.method.apply(&mut easy)?;
         if self.max_redirects >= 0 {
+            easy.follow_location(true)?;
             easy.max_redirections(self.max_redirects as u32)?;
         }
         let mut list = List::new();
