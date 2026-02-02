@@ -391,7 +391,7 @@ impl<'a> Client<'a> {
     ///     .get()
     ///     .max_redirects(-1)
     ///     .send("https://example.com/private")?;
-    /// // Ok::<(), curl_rest::Error>(())
+    /// # Ok::<(), curl_rest::Error>(())
     /// ```
     ///
     /// # Errors
@@ -634,7 +634,9 @@ impl<'a> Client<'a> {
     pub fn send(self, url: &str) -> Result<Response, Error> {
         let mut easy = Easy2::new(Collector::new());
         self.method.apply(&mut easy)?;
-        easy.max_redirections(self.max_redirects)?;
+        if self.max_redirects > 1 {
+            easy.max_redirections(self.max_redirects as u32)?;
+        }
         let mut list = List::new();
         let mut has_headers = false;
         for header in &self.headers {
