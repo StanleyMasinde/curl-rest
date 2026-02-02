@@ -2,7 +2,10 @@ name: Feature request
 description: Suggest an idea or enhancement.
 title: "feat: "
 labels:
-  - enhancement
+  - feature
+  - pending
+assignees:
+  - StanleyMasinde
 body:
   - type: markdown
     attributes:
