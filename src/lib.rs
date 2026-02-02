@@ -346,6 +346,7 @@ pub struct Client<'a> {
     query: Vec<QueryParam<'a>>,
     body: Option<Body<'a>>,
     default_user_agent: Option<Cow<'a, str>>,
+    max_redirects: i8,
 }
 
 #[deprecated(note = "Renamed to Client; use Client instead.")]
@@ -359,6 +360,7 @@ impl<'a> Default for Client<'a> {
             query: Vec::new(),
             body: None,
             default_user_agent: None,
+            max_redirects: 1,
         }
     }
 }
@@ -377,6 +379,26 @@ impl<'a> Client<'a> {
             default_user_agent: Some(agent.into()),
             ..Self::default()
         }
+    }
+
+    /// Sets the number of redirects to follow.
+    ///
+    /// Setting -1 means unlimited responses.
+    ///
+    /// # Examples
+    /// ```no_run
+    /// let resp = curl_rest::Client::default()
+    ///     .get()
+    ///     .max_redirects(-1)
+    ///     .send("https://example.com/private")?;
+    /// # Ok::<(), curl_rest::Error>(())
+    /// ```
+    ///
+    /// # Errors
+    /// This method does not return errors. Header validation happens in `send`.
+    pub fn max_redirects(mut self, max: i8) -> Self {
+        self.max_redirects = max;
+        self
     }
 
     /// Sets the HTTP method explicitly.
@@ -612,6 +634,10 @@ impl<'a> Client<'a> {
     pub fn send(self, url: &str) -> Result<Response, Error> {
         let mut easy = Easy2::new(Collector::new());
         self.method.apply(&mut easy)?;
+        if self.max_redirects >= 0 {
+            easy.follow_location(true)?;
+            easy.max_redirections(self.max_redirects as u32)?;
+        }
         let mut list = List::new();
         let mut has_headers = false;
         for header in &self.headers {
