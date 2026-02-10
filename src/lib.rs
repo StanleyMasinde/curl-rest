@@ -45,7 +45,10 @@
 
 use curl::easy::{Easy2, Handler, List, WriteError};
 use percent_encoding::{NON_ALPHANUMERIC, utf8_percent_encode};
-use std::borrow::Cow;
+use std::{
+    borrow::Cow,
+    io::{Cursor, Read, Write},
+};
 use thiserror::Error;
 use url::Url;
 
@@ -207,10 +210,13 @@ pub enum Error {
     /// The server returned an unrecognized HTTP status code.
     #[error("invalid HTTP status code: {0}")]
     InvalidStatusCode(u32),
+    /// There was an error during brotli decompression
+    #[error("brotli decompression failed: {0}")]
+    BrotliDecompression(#[from] std::io::Error),
 }
 
 /// Common HTTP headers supported by the client, plus `Custom` for non-standard names.
-#[derive(Clone)]
+#[derive(Debug, Clone)]
 pub enum Header<'a> {
     /// Authorization header, e.g. "Bearer &lt;token&gt;".
     Authorization(Cow<'a, str>),
@@ -274,6 +280,23 @@ pub enum Method {
 struct Collector {
     body: Vec<u8>,
     headers: Vec<ResponseHeader>,
+    position: usize,
+}
+
+impl Read for Collector {
+    fn read(&mut self, buf: &mut [u8]) -> std::io::Result<usize> {
+        if self.position > self.body.len() {
+            return Ok(0);
+        }
+
+        let remaining = &self.body[self.position..];
+        let to_read = remaining.len().min(buf.len());
+
+        buf[..to_read].copy_from_slice(&remaining[..to_read]);
+        self.position += to_read;
+
+        Ok(to_read)
+    }
 }
 
 impl Collector {
@@ -281,6 +304,7 @@ impl Collector {
         Self {
             body: Vec::new(),
             headers: Vec::new(),
+            position: Default::default(),
         }
     }
 }
@@ -341,6 +365,7 @@ pub struct Client<'a> {
     body: Option<Body<'a>>,
     default_user_agent: Option<Cow<'a, str>>,
     max_redirects: i8,
+    brotli: bool,
 }
 
 #[deprecated(note = "Renamed to Client; use Client instead.")]
@@ -355,6 +380,7 @@ impl<'a> Default for Client<'a> {
             body: None,
             default_user_agent: None,
             max_redirects: 1,
+            brotli: false,
         }
     }
 }
@@ -392,6 +418,18 @@ impl<'a> Client<'a> {
     /// This method does not return errors. Header validation happens in `send`.
     pub fn max_redirects(mut self, max: i8) -> Self {
         self.max_redirects = max;
+        self
+    }
+
+    /// Sets brotli on or off.
+    /// This setting interferes with other compression algorithms like `gzip`.
+    /// To use those, leave this as false.
+    ///
+    /// This has to be set to true to disable automatic decompression because libcurl
+    /// does not support brotli.
+    pub fn brotli(mut self, is_enabled: bool) -> Self {
+        self.brotli = is_enabled;
+
         self
     }
 
@@ -632,31 +670,46 @@ impl<'a> Client<'a> {
             easy.follow_location(true)?;
             easy.max_redirections(self.max_redirects as u32)?;
         }
-        easy.accept_encoding("gzip")?;
+
+        if !self.brotli {
+            easy.accept_encoding("gzip")?;
+        }
+
         let mut list = List::new();
         let mut has_headers = false;
+
+        if self.brotli && !self.has_accept_encoding_header() {
+            list.append("Accept-Encoding: br")?;
+            has_headers = true;
+        }
+
         for header in &self.headers {
             list.append(&header.to_line()?)?;
             has_headers = true;
         }
+
         if let Some(default_user_agent) = &self.default_user_agent {
             if !self.has_user_agent_header() {
                 list.append(&format!("User-Agent: {default_user_agent}"))?;
                 has_headers = true;
             }
         }
+
         if let Some(content_type) = self.body_content_type() {
             if !self.has_content_type_header() {
                 list.append(&format!("Content-Type: {content_type}"))?;
                 has_headers = true;
             }
         }
+
         if has_headers {
             easy.http_headers(list)?;
         }
+
         if let Some(body) = &self.body {
             easy.post_fields_copy(body.bytes())?;
         }
+
         let url = add_query_params(url, &self.query);
         validate_url(url.as_ref())?;
         easy.url(url.as_ref())?;
@@ -667,12 +720,39 @@ impl<'a> Client<'a> {
             u16::try_from(status_code).map_err(|_| Error::InvalidStatusCode(status_code))?;
         let status =
             StatusCode::from_u16(status_u16).ok_or(Error::InvalidStatusCode(status_code))?;
-        let body = easy.get_ref().body.clone();
+        let response_body = easy.get_ref().body.clone();
         let headers = easy.get_ref().headers.clone();
+
+        if headers.iter().any(|header| {
+            header.name.eq_ignore_ascii_case("Content-Encoding")
+                && header.value.eq_ignore_ascii_case("br")
+        }) {
+            let mut writable_body = Cursor::new(response_body.to_vec());
+            let mut decompressed = Vec::new();
+
+            brotli_decompressor::BrotliDecompress(&mut writable_body, &mut decompressed)
+                .map_err(Error::BrotliDecompression)?;
+            let _ = writable_body.write(&decompressed);
+
+            return Ok(Response {
+                status,
+                headers,
+                body: decompressed,
+            });
+        }
+
         Ok(Response {
             status,
             headers,
-            body,
+            body: response_body,
+        })
+    }
+
+    fn has_accept_encoding_header(&self) -> bool {
+        self.headers.iter().any(|header| match header {
+            Header::AcceptEncoding(_) => true,
+            Header::Custom(name, _) => name.eq_ignore_ascii_case("Accept-Encoding"),
+            _ => false,
         })
     }
 
