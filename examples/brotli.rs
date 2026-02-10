@@ -3,11 +3,11 @@ use std::env;
 fn main() {
     let mut args = env::args().skip(1);
     let verb = args.next().unwrap_or_else(|| {
-        eprintln!("usage: cargo run --example curl -- <VERB> <URL>");
+        eprintln!("usage: cargo run --example brotli -- <VERB> <URL>");
         std::process::exit(2);
     });
     let url = args.next().unwrap_or_else(|| {
-        eprintln!("usage: cargo run --example curl -- <VERB> <URL>");
+        eprintln!("usage: cargo run --example brotli -- <VERB> <URL>");
         std::process::exit(2);
     });
 
@@ -32,6 +32,7 @@ fn main() {
         .method(verb)
         .send(&url)
         .expect("request failed");
+
     eprintln!("Status: {}", resp.status);
     println!("{}", String::from_utf8_lossy(&resp.body));
 }
