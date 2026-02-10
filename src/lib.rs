@@ -418,12 +418,12 @@ impl<'a> Client<'a> {
         self
     }
 
-    /// Sets brotlin on or off.
-    /// This setting interferes with other compression algorims like `gzip`
-    /// To use those, leave this to false.
+    /// Sets brotli on or off.
+    /// This setting interferes with other compression algorithms like `gzip`.
+    /// To use those, leave this as false.
     ///
-    /// This has to be set to true in order to disable automatice decompression because libcurl
-    /// does not support brotli
+    /// This has to be set to true to disable automatic decompression because libcurl
+    /// does not support brotli.
     pub fn brotli(mut self, is_enabled: bool) -> Self {
         self.brotli = is_enabled;
 
