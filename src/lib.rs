@@ -210,6 +210,9 @@ pub enum Error {
     /// The server returned an unrecognized HTTP status code.
     #[error("invalid HTTP status code: {0}")]
     InvalidStatusCode(u32),
+    /// There was an error during brotli decompression
+    #[error("brotli decompression failed: {0}")]
+    BrotliDecompression(#[from] std::io::Error),
 }
 
 /// Common HTTP headers supported by the client, plus `Custom` for non-standard names.
@@ -722,7 +725,8 @@ impl<'a> Client<'a> {
             let mut writable_body = Cursor::new(response_body.to_vec());
             let mut decompressed = Vec::new();
 
-            let _ = brotli_decompressor::BrotliDecompress(&mut writable_body, &mut decompressed);
+            brotli_decompressor::BrotliDecompress(&mut writable_body, &mut decompressed)
+                .map_err(|error| Error::BrotliDecompression(error))?;
             let _ = writable_body.write(&decompressed);
 
             return Ok(Response {
