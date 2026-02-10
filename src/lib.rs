@@ -678,6 +678,11 @@ impl<'a> Client<'a> {
         let mut list = List::new();
         let mut has_headers = false;
 
+        if self.brotli && !self.has_accept_encoding_header() {
+            list.append("Accept-Encoding: br")?;
+            has_headers = true;
+        }
+
         for header in &self.headers {
             list.append(&header.to_line()?)?;
             has_headers = true;
@@ -726,7 +731,7 @@ impl<'a> Client<'a> {
             let mut decompressed = Vec::new();
 
             brotli_decompressor::BrotliDecompress(&mut writable_body, &mut decompressed)
-                .map_err(|error| Error::BrotliDecompression(error))?;
+                .map_err(Error::BrotliDecompression)?;
             let _ = writable_body.write(&decompressed);
 
             return Ok(Response {
@@ -740,6 +745,14 @@ impl<'a> Client<'a> {
             status,
             headers,
             body: response_body,
+        })
+    }
+
+    fn has_accept_encoding_header(&self) -> bool {
+        self.headers.iter().any(|header| match header {
+            Header::AcceptEncoding(_) => true,
+            Header::Custom(name, _) => name.eq_ignore_ascii_case("Accept-Encoding"),
+            _ => false,
         })
     }
 
