@@ -45,10 +45,7 @@
 
 use curl::easy::{Easy2, Handler, List, WriteError};
 use percent_encoding::{NON_ALPHANUMERIC, utf8_percent_encode};
-use std::{
-    borrow::Cow,
-    io::{Cursor, Read, Write},
-};
+use std::borrow::Cow;
 use thiserror::Error;
 use url::Url;
 
@@ -213,7 +210,7 @@ pub enum Error {
 }
 
 /// Common HTTP headers supported by the client, plus `Custom` for non-standard names.
-#[derive(Debug, Clone)]
+#[derive(Clone)]
 pub enum Header<'a> {
     /// Authorization header, e.g. "Bearer &lt;token&gt;".
     Authorization(Cow<'a, str>),
@@ -277,23 +274,6 @@ pub enum Method {
 struct Collector {
     body: Vec<u8>,
     headers: Vec<ResponseHeader>,
-    position: usize,
-}
-
-impl Read for Collector {
-    fn read(&mut self, buf: &mut [u8]) -> std::io::Result<usize> {
-        if self.position > self.body.len() {
-            return Ok(0);
-        }
-
-        let remaining = &self.body[self.position..];
-        let to_read = remaining.len().min(buf.len());
-
-        buf[..to_read].copy_from_slice(&remaining[..to_read]);
-        self.position += to_read;
-
-        Ok(to_read)
-    }
 }
 
 impl Collector {
@@ -301,7 +281,6 @@ impl Collector {
         Self {
             body: Vec::new(),
             headers: Vec::new(),
-            position: Default::default(),
         }
     }
 }
@@ -362,7 +341,6 @@ pub struct Client<'a> {
     body: Option<Body<'a>>,
     default_user_agent: Option<Cow<'a, str>>,
     max_redirects: i8,
-    brotli: bool,
 }
 
 #[deprecated(note = "Renamed to Client; use Client instead.")]
@@ -377,7 +355,6 @@ impl<'a> Default for Client<'a> {
             body: None,
             default_user_agent: None,
             max_redirects: 1,
-            brotli: false,
         }
     }
 }
@@ -415,18 +392,6 @@ impl<'a> Client<'a> {
     /// This method does not return errors. Header validation happens in `send`.
     pub fn max_redirects(mut self, max: i8) -> Self {
         self.max_redirects = max;
-        self
-    }
-
-    /// Sets brotlin on or off.
-    /// This setting interferes with other compression algorims like `gzip`
-    /// To use those, leave this to false.
-    ///
-    /// This has to be set to true in order to disable automatice decompression because libcurl
-    /// does not support brotli
-    pub fn brotli(mut self, is_enabled: bool) -> Self {
-        self.brotli = is_enabled;
-
         self
     }
 
@@ -667,41 +632,31 @@ impl<'a> Client<'a> {
             easy.follow_location(true)?;
             easy.max_redirections(self.max_redirects as u32)?;
         }
-
-        if !self.brotli {
-            easy.accept_encoding("gzip")?;
-        }
-
+        easy.accept_encoding("gzip")?;
         let mut list = List::new();
         let mut has_headers = false;
-
         for header in &self.headers {
             list.append(&header.to_line()?)?;
             has_headers = true;
         }
-
         if let Some(default_user_agent) = &self.default_user_agent {
             if !self.has_user_agent_header() {
                 list.append(&format!("User-Agent: {default_user_agent}"))?;
                 has_headers = true;
             }
         }
-
         if let Some(content_type) = self.body_content_type() {
             if !self.has_content_type_header() {
                 list.append(&format!("Content-Type: {content_type}"))?;
                 has_headers = true;
             }
         }
-
         if has_headers {
             easy.http_headers(list)?;
         }
-
         if let Some(body) = &self.body {
             easy.post_fields_copy(body.bytes())?;
         }
-
         let url = add_query_params(url, &self.query);
         validate_url(url.as_ref())?;
         easy.url(url.as_ref())?;
@@ -712,30 +667,12 @@ impl<'a> Client<'a> {
             u16::try_from(status_code).map_err(|_| Error::InvalidStatusCode(status_code))?;
         let status =
             StatusCode::from_u16(status_u16).ok_or(Error::InvalidStatusCode(status_code))?;
-        let response_body = easy.get_ref().body.clone();
+        let body = easy.get_ref().body.clone();
         let headers = easy.get_ref().headers.clone();
-
-        if headers.iter().any(|header| {
-            header.name.eq_ignore_ascii_case("Content-Encoding")
-                && header.value.eq_ignore_ascii_case("br")
-        }) {
-            let mut writable_body = Cursor::new(response_body.to_vec());
-            let mut decompressed = Vec::new();
-
-            let _ = brotli_decompressor::BrotliDecompress(&mut writable_body, &mut decompressed);
-            let _ = writable_body.write(&decompressed);
-
-            return Ok(Response {
-                status,
-                headers,
-                body: decompressed,
-            });
-        }
-
         Ok(Response {
             status,
             headers,
-            body: response_body,
+            body,
         })
     }
 
