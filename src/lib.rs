@@ -216,7 +216,7 @@ pub enum Error {
 }
 
 /// Common HTTP headers supported by the client, plus `Custom` for non-standard names.
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq)]
 pub enum Header<'a> {
     /// Authorization header, e.g. "Bearer &lt;token&gt;".
     Authorization(Cow<'a, str>),
@@ -1074,5 +1074,17 @@ mod tests {
     #[test]
     fn status_code_default_is_ok() {
         assert_eq!(StatusCode::default(), StatusCode::Ok);
+    }
+
+    #[test]
+    fn headers_comparison() {
+        let mut headers: Vec<Header> = Vec::new();
+        headers.push(Header::AcceptEncoding(Cow::Borrowed("br")));
+
+        assert!(
+            headers
+                .iter()
+                .any(|header| header == &Header::AcceptEncoding(Cow::Borrowed("br")))
+        )
     }
 }
