@@ -1077,7 +1077,7 @@ mod tests {
     }
 
     #[test]
-    fn headers_comparission() {
+    fn headers_comparison() {
         let mut headers: Vec<Header> = Vec::new();
         headers.push(Header::AcceptEncoding(Cow::Borrowed("br")));
 
