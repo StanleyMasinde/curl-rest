@@ -47,6 +47,7 @@ use curl::easy::{Easy2, Handler, List, WriteError};
 use percent_encoding::{NON_ALPHANUMERIC, utf8_percent_encode};
 use std::{
     borrow::Cow,
+    fmt::Display,
     io::{Cursor, Read, Write},
 };
 use thiserror::Error;
@@ -113,7 +114,7 @@ macro_rules! status_codes {
             )+
         }
 
-        impl std::fmt::Display for StatusCode {
+        impl Display for StatusCode {
             fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
                 write!(f, "{} {}", self.as_u16(), self.canonical_reason())
             }
