@@ -1,9 +1,9 @@
 //! A small, blocking REST client built on libcurl.
 //!
-//! The API is a builder centered around `Client`, with GET as the default method.
+//! The API is a builder centred around `Client`, with GET as the default method.
 //! Use `send` as the terminal operation.
 //!
-//! # libcurl dependency
+//! # Libcurl dependency
 //! `curl-rest` links to libcurl, so your build needs a libcurl development
 //! package available on the system (for example, installed via your OS package
 //! manager). If you prefer a vendored build or static linking, enable the
@@ -11,7 +11,7 @@
 //! propagates them to this crate.
 //!
 //! This crate exposes a few convenience features (default is `ssl`):
-//! - `ssl`: enable OpenSSL-backed TLS (libcurl's default).
+//! - `ssl`: enable OpenSSL-backed TLS (libcurl default).
 //! - `rustls`: enable Rustls-backed TLS (disable default features in your
 //!   dependency to avoid OpenSSL).
 //! - `static-curl`: build and link against a bundled libcurl.
@@ -216,10 +216,10 @@ pub enum Error {
     BrotliDecompression(#[from] std::io::Error),
 }
 
-/// Common HTTP headers supported by the client, plus `Custom` for non-standard names.
+/// Common HTTP headers supported by the client, plus `Custom` for nonstandard names.
 #[derive(Debug, Clone, PartialEq)]
 pub enum Header<'a> {
-    /// Authorization header, e.g. "Bearer &lt;token&gt;".
+    /// Authorization header, e.g. "Bearer &Lt;token&gt;".
     Authorization(Cow<'a, str>),
     /// Accept header describing accepted response types.
     Accept(Cow<'a, str>),
@@ -241,7 +241,7 @@ pub enum Header<'a> {
     Origin(Cow<'a, str>),
     /// Host header.
     Host(Cow<'a, str>),
-    /// Custom header for non-standard names like "X-Request-Id".
+    /// Custom header for nonstandard names like "X-Request-Id".
     ///
     /// Header names must be valid RFC 9110 `token` values (tchar only).
     Custom(Cow<'a, str>, Cow<'a, str>),

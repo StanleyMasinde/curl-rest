@@ -1,4 +1,4 @@
-# curl-rest
+# Curl-Rest
 
 A Reqwest-like REST client built on libcurl for true blocking requests.
 
@@ -7,13 +7,13 @@ A Reqwest-like REST client built on libcurl for true blocking requests.
 cargo add curl-rest
 ```
 
-### libcurl dependency
+### Libcurl Dependency
 
 `curl-rest` is backed by libcurl, so your build will need a libcurl development package available on the system (for example, installed via your OS package manager). If you prefer a vendored build or static linking, enable the appropriate `curl`/`curl-sys` features in your application so Cargo propagates them to this crate.
 
 This crate exposes a few convenience features (default is `ssl`):
 
-- `ssl`: enable OpenSSL-backed TLS (libcurl's default).
+- `ssl`: enable OpenSSL-backed TLS (libcurl default).
 - `rustls`: enable Rustls-backed TLS (disable default features in your dependency to avoid OpenSSL).
 - `static-curl`: build and link against a bundled libcurl.
 - `static-ssl`: build and link against a bundled OpenSSL.
@@ -68,7 +68,7 @@ for header in &resp.headers {
 
 Response headers are available on `resp.headers` as ordered `name`/`value` pairs.
 
-### Query params
+### Query Parameters
 
 ```rust
 let resp = curl_rest::Client::default()
@@ -79,7 +79,7 @@ let resp = curl_rest::Client::default()
 // Ok::<(), curl_rest::Error>(())
 ```
 
-### JSON body
+### JSON Body
 
 ```rust
 let resp = curl_rest::Client::default()

@@ -1,4 +1,4 @@
-# Contributing to curl-rest
+# Contributing to Curl-Rest
 
 Thanks for your interest in contributing! This guide covers how to set up the project, run tests, and submit changes.
 
@@ -8,7 +8,7 @@ Thanks for your interest in contributing! This guide covers how to set up the pr
 - A libcurl development package available on your system
   - If you prefer a vendored/static build, enable the appropriate `curl`/`curl-sys` features in your app so Cargo propagates them to this crate.
 
-## Getting started
+## Getting Started
 
 ```sh
 # build
@@ -28,7 +28,7 @@ TOKEN=secret cargo run --example headers -- https://example.com/private
 cargo bench
 ```
 
-## Feature flags
+## Feature Flags
 
 This crate exposes convenience features (default is `ssl`):
 
@@ -38,25 +38,25 @@ This crate exposes convenience features (default is `ssl`):
 - `static-ssl`: bundled OpenSSL
 - `vendored`: enables `static-curl` + `static-ssl`
 
-## Coding guidelines
+## Coding Guidelines
 
-- Keep public API changes well documented (doc comments + README updates if behavior changes).
-- Add or update tests for all new features and behavioral changes.
+- Keep public API changes well documented (doc comments + README updates if behaviour changes).
+- Add or update tests for all new features and behavioural changes.
 - Prefer small, focused commits and PRs.
 - Use Conventional Commits for commit messages (e.g., `feat:`, `fix:`, `docs:`).
 
-## Submitting changes
+## Submitting Changes
 
 1. Fork and create a feature branch.
 2. Make your change with tests/docs as needed.
 3. Open a PR with a clear description and rationale.
 
-## Reporting issues
+## Reporting Issues
 
 Please include:
 
 - Reproduction steps or a minimal example
-- Expected vs actual behavior
+- Expected vs actual behaviour
 - Rust version and OS
 - Feature flags used (if relevant)
 
