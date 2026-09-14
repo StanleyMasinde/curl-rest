@@ -25,7 +25,7 @@ pub struct ResponseHeader {
 /// Common HTTP headers supported by the client, plus `Custom` for nonstandard names.
 #[derive(Debug, Clone, PartialEq)]
 pub enum Header<'a> {
-    /// Authorization header, e.g. "Bearer &Lt;token&gt;".
+    /// Authorization header, e.g. "Bearer &lt;token&gt;".
     Authorization(Cow<'a, str>),
     /// Accept header describing accepted response types.
     Accept(Cow<'a, str>),
@@ -54,7 +54,7 @@ pub enum Header<'a> {
 }
 
 /// Query parameter represented as a key-value pair.
-#[derive(Clone)]
+#[derive(Debug, Clone)]
 pub struct QueryParam<'a> {
     pub(crate) key: Cow<'a, str>,
     pub(crate) value: Cow<'a, str>,

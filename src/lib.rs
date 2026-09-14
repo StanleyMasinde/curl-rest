@@ -56,12 +56,8 @@ use std::{
 };
 use url::Url;
 
-use crate::types::{Response, ResponseHeader};
-
+pub use crate::types::{Header, Method, QueryParam, Response, ResponseHeader};
 pub use error::Error;
-pub use types::Header;
-pub use types::Method;
-pub use types::QueryParam;
 
 status_codes! {
     Continue => (100, "Continue", CONTINUE),
@@ -254,7 +250,7 @@ impl<'a> Client<'a> {
 
     /// Sets the number of redirects to follow.
     ///
-    /// Setting -1 means unlimited responses.
+    /// Setting -1 means unlimited redirects.
     ///
     /// # Examples
     /// ```no_run
@@ -272,12 +268,12 @@ impl<'a> Client<'a> {
         self
     }
 
-    /// Sets brotli on or off.
-    /// This setting interferes with other compression algorithms like `gzip`.
-    /// To use those, leave this as false.
+    /// Enables or disables brotli response handling.
     ///
-    /// This has to be set to true to disable automatic decompression because libcurl
-    /// does not support brotli.
+    /// When disabled (default), requests advertise `gzip` via `Accept-Encoding`.
+    /// When enabled, requests advertise `br` instead and the client decompresses
+    /// brotli bodies manually, because libcurl does not do it.
+    /// Leave this as `false` to use `gzip` or other libcurl-supported encodings.
     pub fn brotli(mut self, is_enabled: bool) -> Self {
         self.brotli = is_enabled;
 
@@ -708,6 +704,7 @@ impl Header<'_> {
     }
 }
 
+/// Request body payload.
 pub enum Body<'a> {
     /// JSON text body.
     Json(Cow<'a, str>),
