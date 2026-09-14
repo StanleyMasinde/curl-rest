@@ -43,6 +43,10 @@
 //! }
 //! ```
 
+pub mod error;
+pub mod macros;
+pub mod types;
+
 use curl::easy::{Easy2, Handler, List, WriteError};
 use percent_encoding::{NON_ALPHANUMERIC, utf8_percent_encode};
 use std::{
@@ -50,83 +54,10 @@ use std::{
     fmt::Display,
     io::{Cursor, Read, Write},
 };
-use thiserror::Error;
 use url::Url;
 
-/// HTTP response container returned by `send`.
-#[derive(Debug, Clone, Default)]
-pub struct Response {
-    /// Status code returned by the server.
-    pub status: StatusCode,
-    /// Response headers in received order (including duplicates).
-    pub headers: Vec<ResponseHeader>,
-    /// Raw response body bytes.
-    pub body: Vec<u8>,
-}
-
-/// A single HTTP response header entry.
-#[derive(Debug, Clone, PartialEq, Eq)]
-pub struct ResponseHeader {
-    /// Header name as received.
-    pub name: String,
-    /// Header value as received (trimmed).
-    pub value: String,
-}
-
-macro_rules! status_codes {
-    ($(
-        $variant:ident => ($code:literal, $reason:literal, $const_name:ident)
-    ),+ $(,)?) => {
-        /// HTTP status codes defined by RFC 9110 and related specifications.
-        #[derive(Clone, Copy, Debug, Eq, PartialEq, Hash)]
-        #[repr(u16)]
-        pub enum StatusCode {
-            $(
-                #[doc = $reason]
-                $variant = $code,
-            )+
-        }
-
-        impl StatusCode {
-            /// Returns the numeric status code.
-            pub const fn as_u16(self) -> u16 {
-                self as u16
-            }
-
-            /// Returns the canonical reason phrase for this status code.
-            pub const fn canonical_reason(self) -> &'static str {
-                match self {
-                    $(StatusCode::$variant => $reason,)+
-                }
-            }
-
-            /// Converts a numeric status code into a `StatusCode` if known.
-            pub const fn from_u16(code: u16) -> Option<Self> {
-                match code {
-                    $($code => Some(StatusCode::$variant),)+
-                    _ => None,
-                }
-            }
-
-            $(
-                /// Alias matching reqwest's naming style.
-                pub const $const_name: StatusCode = StatusCode::$variant;
-            )+
-        }
-
-        impl Display for StatusCode {
-            fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-                write!(f, "{} {}", self.as_u16(), self.canonical_reason())
-            }
-        }
-
-        impl Default for StatusCode {
-            fn default() -> Self {
-                StatusCode::Ok
-            }
-        }
-    };
-}
+pub use crate::types::{Header, Method, QueryParam, Response, ResponseHeader};
+pub use error::Error;
 
 status_codes! {
     Continue => (100, "Continue", CONTINUE),
@@ -191,91 +122,6 @@ status_codes! {
     LoopDetected => (508, "Loop Detected", LOOP_DETECTED),
     NotExtended => (510, "Not Extended", NOT_EXTENDED),
     NetworkAuthenticationRequired => (511, "Network Authentication Required", NETWORK_AUTHENTICATION_REQUIRED),
-}
-
-/// Error type returned by the curl-rest client.
-#[derive(Debug, Error)]
-pub enum Error {
-    /// Error reported by libcurl.
-    #[error("curl error: {0}")]
-    Client(#[from] curl::Error),
-    /// The provided URL could not be parsed.
-    #[error("invalid url: {0}")]
-    InvalidUrl(String),
-    /// The provided header value contained invalid characters.
-    #[error("invalid header value for {0}")]
-    InvalidHeaderValue(String),
-    /// The provided header name contained invalid characters.
-    #[error("invalid header name: {0}")]
-    InvalidHeaderName(String),
-    /// The server returned an unrecognized HTTP status code.
-    #[error("invalid HTTP status code: {0}")]
-    InvalidStatusCode(u32),
-    /// There was an error during brotli decompression
-    #[error("brotli decompression failed: {0}")]
-    BrotliDecompression(#[from] std::io::Error),
-}
-
-/// Common HTTP headers supported by the client, plus `Custom` for nonstandard names.
-#[derive(Debug, Clone, PartialEq)]
-pub enum Header<'a> {
-    /// Authorization header, e.g. "Bearer &Lt;token&gt;".
-    Authorization(Cow<'a, str>),
-    /// Accept header describing accepted response types.
-    Accept(Cow<'a, str>),
-    /// Content-Type header describing request body type.
-    ContentType(Cow<'a, str>),
-    /// User-Agent header string.
-    UserAgent(Cow<'a, str>),
-    /// Accept-Encoding header for compression preferences.
-    ///
-    /// Common values include `gzip`, `br`, or `deflate`.
-    AcceptEncoding(Cow<'a, str>),
-    /// Accept-Language header for locale preferences.
-    AcceptLanguage(Cow<'a, str>),
-    /// Cache-Control header directives.
-    CacheControl(Cow<'a, str>),
-    /// Referer header.
-    Referer(Cow<'a, str>),
-    /// Origin header.
-    Origin(Cow<'a, str>),
-    /// Host header.
-    Host(Cow<'a, str>),
-    /// Custom header for nonstandard names like "X-Request-Id".
-    ///
-    /// Header names must be valid RFC 9110 `token` values (tchar only).
-    Custom(Cow<'a, str>, Cow<'a, str>),
-}
-
-/// Query parameter represented as a key-value pair.
-#[derive(Clone)]
-pub struct QueryParam<'a> {
-    key: Cow<'a, str>,
-    value: Cow<'a, str>,
-}
-
-/// Supported HTTP methods.
-#[derive(Debug, Default, Clone)]
-pub enum Method {
-    /// HTTP GET.
-    #[default]
-    Get,
-    /// HTTP POST.
-    Post,
-    /// HTTP PUT.
-    Put,
-    /// HTTP DELETE.
-    Delete,
-    /// HTTP HEAD.
-    Head,
-    /// HTTP OPTIONS.
-    Options,
-    /// HTTP PATCH.
-    Patch,
-    /// HTTP CONNECT.
-    Connect,
-    /// HTTP TRACE.
-    Trace,
 }
 
 struct Collector {
@@ -404,7 +250,7 @@ impl<'a> Client<'a> {
 
     /// Sets the number of redirects to follow.
     ///
-    /// Setting -1 means unlimited responses.
+    /// Setting -1 means unlimited redirects.
     ///
     /// # Examples
     /// ```no_run
@@ -422,12 +268,12 @@ impl<'a> Client<'a> {
         self
     }
 
-    /// Sets brotli on or off.
-    /// This setting interferes with other compression algorithms like `gzip`.
-    /// To use those, leave this as false.
+    /// Enables or disables brotli response handling.
     ///
-    /// This has to be set to true to disable automatic decompression because libcurl
-    /// does not support brotli.
+    /// When disabled (default), requests advertise `gzip` via `Accept-Encoding`.
+    /// When enabled, requests advertise `br` instead and the client decompresses
+    /// brotli bodies manually, because libcurl does not do it.
+    /// Leave this as `false` to use `gzip` or other libcurl-supported encodings.
     pub fn brotli(mut self, is_enabled: bool) -> Self {
         self.brotli = is_enabled;
 
@@ -858,6 +704,7 @@ impl Header<'_> {
     }
 }
 
+/// Request body payload.
 pub enum Body<'a> {
     /// JSON text body.
     Json(Cow<'a, str>),

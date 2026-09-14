@@ -19,6 +19,12 @@ This crate exposes a few convenience features (default is `ssl`):
 - `static-ssl`: build and link against a bundled OpenSSL.
 - `vendored`: enables both `static-curl` and `static-ssl`.
 
+To use Rustls without OpenSSL:
+
+```toml
+curl-rest = { version = "0.5.4", default-features = false, features = ["rustls"] }
+```
+
 ## Usage
 
 ```rust
@@ -89,11 +95,49 @@ let resp = curl_rest::Client::default()
 // Ok::<(), curl_rest::Error>(())
 ```
 
+`body_json` defaults to `Content-Type: application/json` and `body_text` to
+`text/plain; charset=utf-8`. An explicit `Content-Type` header overrides the
+default. Use `body_bytes` for raw bytes (no default content type).
+
+### More Builders
+
+```rust
+// Plural builders, explicit method, redirects, and brotli.
+let resp = curl_rest::Client::default()
+    .method(curl_rest::Method::Post)
+    .headers([
+        curl_rest::Header::Accept("application/json".into()),
+        curl_rest::Header::UserAgent("curl-rest/0.1".into()),
+    ])
+    .query_params([
+        curl_rest::QueryParam::new("sort", "desc"),
+        curl_rest::QueryParam::new("limit", "50"),
+    ])
+    .max_redirects(5)
+    .brotli(false)
+    .body_text("hello")
+    .send("https://example.com/items")?;
+// Ok::<(), curl_rest::Error>(())
+```
+
+`max_redirects(-1)` follows unlimited redirects. `brotli(true)` advertises
+`br` and decompresses manually; leave it `false` for `gzip` and other
+libcurl-supported encodings.
+
+### Response and Errors
+
+`send` returns a `curl_rest::Response` with `status` (`curl_rest::StatusCode`),
+ordered `headers` (`name`/`value` pairs), and raw `body` bytes. Failures come
+back as `curl_rest::Error`: `InvalidUrl`, `InvalidHeaderName`,
+`InvalidHeaderValue`, `InvalidStatusCode`, `BrotliDecompression`, or a
+libcurl `Client` error.
+
 ## Examples
 
 ```sh
 cargo run --example curl -- GET https://example.com
 TOKEN=secret cargo run --example headers -- https://example.com/private
+cargo run --example brotli -- GET https://example.com
 ```
 
 ## Benchmarks
