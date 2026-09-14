@@ -43,7 +43,9 @@
 //! }
 //! ```
 
+pub mod error;
 pub mod macros;
+pub mod types;
 
 use curl::easy::{Easy2, Handler, List, WriteError};
 use percent_encoding::{NON_ALPHANUMERIC, utf8_percent_encode};
@@ -52,28 +54,14 @@ use std::{
     fmt::Display,
     io::{Cursor, Read, Write},
 };
-use thiserror::Error;
 use url::Url;
 
-/// HTTP response container returned by `send`.
-#[derive(Debug, Clone, Default)]
-pub struct Response {
-    /// Status code returned by the server.
-    pub status: StatusCode,
-    /// Response headers in received order (including duplicates).
-    pub headers: Vec<ResponseHeader>,
-    /// Raw response body bytes.
-    pub body: Vec<u8>,
-}
+use crate::types::{Response, ResponseHeader};
 
-/// A single HTTP response header entry.
-#[derive(Debug, Clone, PartialEq, Eq)]
-pub struct ResponseHeader {
-    /// Header name as received.
-    pub name: String,
-    /// Header value as received (trimmed).
-    pub value: String,
-}
+pub use error::Error;
+pub use types::Header;
+pub use types::Method;
+pub use types::QueryParam;
 
 status_codes! {
     Continue => (100, "Continue", CONTINUE),
@@ -138,91 +126,6 @@ status_codes! {
     LoopDetected => (508, "Loop Detected", LOOP_DETECTED),
     NotExtended => (510, "Not Extended", NOT_EXTENDED),
     NetworkAuthenticationRequired => (511, "Network Authentication Required", NETWORK_AUTHENTICATION_REQUIRED),
-}
-
-/// Error type returned by the curl-rest client.
-#[derive(Debug, Error)]
-pub enum Error {
-    /// Error reported by libcurl.
-    #[error("curl error: {0}")]
-    Client(#[from] curl::Error),
-    /// The provided URL could not be parsed.
-    #[error("invalid url: {0}")]
-    InvalidUrl(String),
-    /// The provided header value contained invalid characters.
-    #[error("invalid header value for {0}")]
-    InvalidHeaderValue(String),
-    /// The provided header name contained invalid characters.
-    #[error("invalid header name: {0}")]
-    InvalidHeaderName(String),
-    /// The server returned an unrecognized HTTP status code.
-    #[error("invalid HTTP status code: {0}")]
-    InvalidStatusCode(u32),
-    /// There was an error during brotli decompression
-    #[error("brotli decompression failed: {0}")]
-    BrotliDecompression(#[from] std::io::Error),
-}
-
-/// Common HTTP headers supported by the client, plus `Custom` for nonstandard names.
-#[derive(Debug, Clone, PartialEq)]
-pub enum Header<'a> {
-    /// Authorization header, e.g. "Bearer &Lt;token&gt;".
-    Authorization(Cow<'a, str>),
-    /// Accept header describing accepted response types.
-    Accept(Cow<'a, str>),
-    /// Content-Type header describing request body type.
-    ContentType(Cow<'a, str>),
-    /// User-Agent header string.
-    UserAgent(Cow<'a, str>),
-    /// Accept-Encoding header for compression preferences.
-    ///
-    /// Common values include `gzip`, `br`, or `deflate`.
-    AcceptEncoding(Cow<'a, str>),
-    /// Accept-Language header for locale preferences.
-    AcceptLanguage(Cow<'a, str>),
-    /// Cache-Control header directives.
-    CacheControl(Cow<'a, str>),
-    /// Referer header.
-    Referer(Cow<'a, str>),
-    /// Origin header.
-    Origin(Cow<'a, str>),
-    /// Host header.
-    Host(Cow<'a, str>),
-    /// Custom header for nonstandard names like "X-Request-Id".
-    ///
-    /// Header names must be valid RFC 9110 `token` values (tchar only).
-    Custom(Cow<'a, str>, Cow<'a, str>),
-}
-
-/// Query parameter represented as a key-value pair.
-#[derive(Clone)]
-pub struct QueryParam<'a> {
-    key: Cow<'a, str>,
-    value: Cow<'a, str>,
-}
-
-/// Supported HTTP methods.
-#[derive(Debug, Default, Clone)]
-pub enum Method {
-    /// HTTP GET.
-    #[default]
-    Get,
-    /// HTTP POST.
-    Post,
-    /// HTTP PUT.
-    Put,
-    /// HTTP DELETE.
-    Delete,
-    /// HTTP HEAD.
-    Head,
-    /// HTTP OPTIONS.
-    Options,
-    /// HTTP PATCH.
-    Patch,
-    /// HTTP CONNECT.
-    Connect,
-    /// HTTP TRACE.
-    Trace,
 }
 
 struct Collector {
